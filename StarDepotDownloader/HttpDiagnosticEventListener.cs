@@ -5,7 +5,7 @@ using System;
 using System.Diagnostics.Tracing;
 using System.Text;
 
-namespace DepotDownloader
+namespace StarDepotDownloader
 {
     internal sealed class HttpDiagnosticEventListener : EventListener
     {

@@ -25,15 +25,15 @@ jobs:
       - name: Configure NuGet
         run: |
           dotnet nuget add source --username USERNAME --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/SteamRE/index.json"
-          dotnet add DepotDownloader/DepotDownloader.csproj package SteamKit2 --prerelease
+          dotnet add StarDepotDownloader/StarDepotDownloader.csproj package SteamKit2 --prerelease
 
       - name: Build
-        run: dotnet publish DepotDownloader/DepotDownloader.csproj -c ${{ matrix.configuration }} -o artifacts /p:ContinuousIntegrationBuild=true
+        run: dotnet publish StarDepotDownloader/StarDepotDownloader.csproj -c ${{ matrix.configuration }} -o artifacts /p:ContinuousIntegrationBuild=true
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         if: matrix.configuration == 'Release'
         with:
-          name: DepotDownloader-${{ matrix.runs-on }}
+          name: StarDepotDownloader-${{ matrix.runs-on }}
           path: artifacts
           if-no-files-found: error

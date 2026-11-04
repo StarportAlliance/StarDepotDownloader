@@ -14,7 +14,7 @@ using SteamKit2.Authentication;
 using SteamKit2.CDN;
 using SteamKit2.Internal;
 
-namespace DepotDownloader
+namespace StarDepotDownloader
 {
     class Steam3Session
     {
@@ -448,7 +448,7 @@ namespace DepotDownloader
                             _ = AccountSettingsStore.Instance.GuardData.TryGetValue(logonDetails.Username, out var guarddata);
                             authSession = await steamClient.Authentication.BeginAuthSessionViaCredentialsAsync(new AuthSessionDetails
                             {
-                                DeviceFriendlyName = nameof(DepotDownloader),
+                                DeviceFriendlyName = nameof(StarDepotDownloader),
                                 Username = logonDetails.Username,
                                 Password = logonDetails.Password,
                                 IsPersistentSession = ContentDownloader.Config.RememberPassword,
@@ -475,7 +475,7 @@ namespace DepotDownloader
                         {
                             var session = await steamClient.Authentication.BeginAuthSessionViaQRAsync(new AuthSessionDetails
                             {
-                                DeviceFriendlyName = nameof(DepotDownloader),
+                                DeviceFriendlyName = nameof(StarDepotDownloader),
                                 IsPersistentSession = ContentDownloader.Config.RememberPassword,
                             });
 

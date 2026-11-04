@@ -11,7 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 using SteamKit2;
 
-namespace DepotDownloader
+namespace StarDepotDownloader
 {
     static class Util
     {

@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 using SteamKit2;
 using SteamKit2.CDN;
 
-namespace DepotDownloader
+namespace StarDepotDownloader
 {
     class Program
     {
@@ -477,13 +477,13 @@ namespace DepotDownloader
             // Do not use tabs to align parameters here because tab size may differ
             Console.WriteLine();
             Console.WriteLine("Usage: downloading one or all depots for an app:");
-            Console.WriteLine("       depotdownloader -app <id> [-depot <id> [-manifest <id>]]");
+            Console.WriteLine("       StarDepotDownloader -app <id> [-depot <id> [-manifest <id>]]");
             Console.WriteLine("                       [-username <username> [-password <password>]] [other options]");
             Console.WriteLine();
             Console.WriteLine("Usage: downloading a workshop item using pubfile id");
-            Console.WriteLine("       depotdownloader -app <id> -pubfile <id> [-username <username> [-password <password>]]");
+            Console.WriteLine("       StarDepotDownloader -app <id> -pubfile <id> [-username <username> [-password <password>]]");
             Console.WriteLine("Usage: downloading a workshop item using ugc id");
-            Console.WriteLine("       depotdownloader -app <id> -ugc <id> [-username <username> [-password <password>]]");
+            Console.WriteLine("       StarDepotDownloader -app <id> -ugc <id> [-username <username> [-password <password>]]");
             Console.WriteLine();
             Console.WriteLine("Parameters:");
             Console.WriteLine("  -app <#>                 - the AppID to download.");
@@ -517,7 +517,7 @@ namespace DepotDownloader
             Console.WriteLine("  -manifest-only           - downloads a human readable manifest for any depots that would be downloaded.");
             Console.WriteLine("  -cellid <#>              - the overridden CellID of the content server to download from.");
             Console.WriteLine("  -max-downloads <#>       - maximum number of chunks to download concurrently. (default: 8).");
-            Console.WriteLine("  -loginid <#>             - a unique 32-bit integer Steam LogonID in decimal, required if running multiple instances of DepotDownloader concurrently.");
+            Console.WriteLine("  -loginid <#>             - a unique 32-bit integer Steam LogonID in decimal, required if running multiple instances of StarDepotDownloader concurrently.");
             Console.WriteLine("  -use-lancache            - forces downloads over the local network via a Lancache instance.");
             Console.WriteLine();
             Console.WriteLine("  -debug                   - enable verbose debug logging.");
@@ -527,7 +527,7 @@ namespace DepotDownloader
         static void PrintVersion(bool printExtra = false)
         {
             var version = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
-            Console.WriteLine($"DepotDownloader v{version}");
+            Console.WriteLine($"StarDepotDownloader v{version}");
 
             if (!printExtra)
             {

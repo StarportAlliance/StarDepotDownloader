@@ -1,131 +1,110 @@
-DepotDownloader
-===============
+StarDepotDownloader
+===================
 
-Steam depot downloader utilizing the SteamKit2 library. Supports .NET 8.0
+基于 SteamKit2 的 Steam Depot 下载工具。
 
-This program must be run from a console, it has no GUI.
+## 安装
 
-## Installation
+从 [Releases 页面](https://github.com/StarportAlliance/StarDepotDownloader/releases/latest) 下载对应平台的压缩包。
 
-### Directly from GitHub
+## 用法
 
-Download a binary from [the releases page](https://github.com/SteamRE/DepotDownloader/releases/latest).
-
-### via Windows Package Manager CLI (aka winget)
-
-On Windows, [winget](https://github.com/microsoft/winget-cli) users can download and install
-the latest Terminal release by installing the `SteamRE.DepotDownloader`
-package:
+### 下载某个应用的单个或全部 Depot
 
 ```powershell
-winget install --exact --id SteamRE.DepotDownloader
+./StarDepotDownloader -app <id> [-depot <id> [-manifest <id>]]
+                      [-username <username> [-password <password>]] [其他选项]
 ```
 
-### via Homebrew
+示例：`./StarDepotDownloader -app 730 -depot 731 -manifest 7617088375292372759`
 
-On macOS, [Homebrew](https://brew.sh) users can download and install that latest release by running the following commands:
+默认使用匿名账号（[可在此查看该账号可访问的应用](https://steamdb.info/sub/17906/)）。
 
-```shell
-brew tap steamre/tools
-brew install depotdownloader
-```
+如需使用自己的账号，请指定 `-username <username>`。如果未指定 `-password` 参数，程序会以交互方式询问密码。
 
-## Usage
+### 使用 pubfile id 下载创意工坊项目
 
-### Downloading one or all depots for an app
 ```powershell
-./DepotDownloader -app <id> [-depot <id> [-manifest <id>]]
-                 [-username <username> [-password <password>]] [other options]
+./StarDepotDownloader -app <id> -pubfile <id> [-username <username> [-password <password>]]
 ```
 
-For example: `./DepotDownloader -app 730 -depot 731 -manifest 7617088375292372759`
+示例：`./StarDepotDownloader -app 730 -pubfile 1885082371`
 
-By default it will use anonymous account ([view which apps are available on it here](https://steamdb.info/sub/17906/)).
+### 使用 ugc id 下载创意工坊项目
 
-To use your account, specify the `-username <username>` parameter. Password will be asked interactively if you do
-not use specify the `-password` parameter.
-
-### Downloading a workshop item using pubfile id
 ```powershell
-./DepotDownloader -app <id> -pubfile <id> [-username <username> [-password <password>]]
+./StarDepotDownloader -app <id> -ugc <id> [-username <username> [-password <password>]]
 ```
 
-For example: `./DepotDownloader -app 730 -pubfile 1885082371`
+示例：`./StarDepotDownloader -app 730 -ugc 770604181014286929`
 
-### Downloading a workshop item using ugc id
-```powershell
-./DepotDownloader -app <id> -ugc <id> [-username <username> [-password <password>]]
-```
+## 参数
 
-For example: `./DepotDownloader -app 730 -ugc 770604181014286929`
+#### 身份验证
 
-## Parameters
-
-#### Authentication
-
-Parameter               | Description
+参数                    | 说明
 ----------------------- | -----------
-`-username <user>`      | the username of the account to login to for restricted content.
-`-password <pass>`      | the password of the account to login to for restricted content.
-`-remember-password`    | if set, remember the password for subsequent logins of this user. (Use `-username <username> -remember-password` as login credentials)
-`-qr`                   | display a login QR code to be scanned with the Steam mobile app
-`-no-mobile`            | prefer entering a 2FA code instead of prompting to accept in the Steam mobile app.
-`-loginid <#>`          | a unique 32-bit integer Steam LogonID in decimal, required if running multiple instances of DepotDownloader concurrently.
+`-username <user>`      | 用于访问受限内容的账号用户名。
+`-password <pass>`      | 用于访问受限内容的账号密码。
+`-remember-password`    | 设置后会记住该用户的密码，供后续登录使用。（将 `-username <username> -remember-password` 作为登录凭据）
+`-qr`                   | 显示登录二维码，可用 Steam 手机应用扫描。
+`-no-mobile`            | 优先输入 2FA 验证码，而不是在 Steam 手机应用中确认。
+`-loginid <#>`          | 十进制 32 位整数形式的 Steam LogonID，并发运行多个 StarDepotDownloader 实例时必须指定。
 
-#### Downloading
+#### 下载
 
-Parameter                | Description
+参数                     | 说明
 ------------------------ | -----------
-`-app <#>`               | the AppID to download.
-`-depot <#>`             | the DepotID to download.
-`-manifest <id>`         | manifest id of content to download (requires `-depot`, default: current for branch).
-`-ugc <#>`               | the UGC ID to download.
-`-pubfile <#>`           | the PublishedFileId to download. (Will automatically resolve to UGC id)
-`-branch <branchname>`   | download from specified branch if available (default: Public).
-`-branchpassword <pass>` | branch password if applicable.
+`-app <#>`               | 要下载的 AppID。
+`-depot <#>`             | 要下载的 DepotID。
+`-manifest <id>`         | 要下载内容的 manifest id（需要配合 `-depot`，默认为当前分支的最新版本）。
+`-ugc <#>`               | 要下载的 UGC ID。
+`-pubfile <#>`           | 要下载的 PublishedFileId。（会自动解析为 UGC id）
+`-branch <branchname>`   | 如果存在则从指定分支下载（默认：Public）。
+`-branchpassword <pass>` | 分支密码（如适用）。
 
-#### Download configuration
+#### 下载配置
 
-Parameter               | Description
+参数                     | 说明
 ----------------------- | -----------
-`-all-platforms`        | downloads all platform-specific depots when `-app` is used.
-`-os <os>`              | the operating system for which to download the game (windows, macos or linux, default: OS the program is currently running on)
-`-osarch <arch>`        | the architecture for which to download the game (32 or 64, default: the host's architecture)
-`-all-archs`            | download all architecture-specific depots when `-app` is used.
-`-all-languages`        | download all language-specific depots when `-app` is used.
-`-language <lang>`      | the language for which to download the game (default: english)
-`-lowviolence`          | download low violence depots when `-app` is used.
-`-dir <installdir>`     | the directory in which to place downloaded files.
-`-filelist <file.txt>`  | the name of a local file that contains a list of files to download (from the manifest). prefix file path with `regex:` if you want to match with regex. each file path should be on their own line.
-`-validate`             | include checksum verification of files already downloaded.
-`-manifest-only`        | downloads a human readable manifest for any depots that would be downloaded.
-`-cellid <#>`           | the overridden CellID of the content server to download from.
-`-max-downloads <#>`    | maximum number of chunks to download concurrently. (default: 8).
-`-use-lancache`         | forces downloads over the local network via a Lancache instance.
+`-all-platforms`        | 使用 `-app` 时下载所有平台专属的 Depot。
+`-os <os>`              | 下载游戏对应的操作系统（windows、macos 或 linux，默认：程序当前运行的操作系统）
+`-osarch <arch>`        | 下载游戏对应的架构（32 或 64，默认：宿主架构）
+`-all-archs`            | 使用 `-app` 时下载所有架构专属的 Depot。
+`-all-languages`        | 使用 `-app` 时下载所有语言专属的 Depot。
+`-language <lang>`      | 下载游戏对应的语言（默认：english）
+`-lowviolence`          | 使用 `-app` 时下载低暴力版本 Depot。
+`-dir <installdir>`     | 存放下载文件的目录。
+`-filelist <file.txt>`  | 本地文件路径，该文件包含要从 manifest 下载的文件列表。如需使用正则匹配，请在文件路径前加上 `regex:`。每个文件路径独占一行。
+`-validate`             | 对已下载文件进行校验和验证。
+`-manifest-only`        | 下载将下载的 Depot 的可读 manifest。
+`-cellid <#>`           | 覆盖要下载的内容服务器 CellID。
+`-max-downloads <#>`    | 并发下载分块的最大数量。（默认：8）
+`-use-lancache`         | 强制通过局域网中的 Lancache 实例下载。
 
-#### Other
+#### 其他
 
-Parameter               | Description
+参数                    | 说明
 ----------------------- | -----------
-`-debug`                | enable verbose debug logging.
-`-V` or `--version`     | print version and runtime.
+`-debug`                | 启用详细的调试日志。
+`-V` 或 `--version`     | 输出版本与运行时信息。
 
-## Frequently Asked Questions
+## 常见问题
 
-### Why am I prompted to enter a 2-factor code every time I run the app?
-Your 2-factor code authenticates a Steam session. You need to "remember" your session with `-remember-password` which persists the login key for your Steam session.
+### 为什么每次运行程序都要求输入两步验证码？
+你的两步验证码用于验证 Steam 会话。你需要用 `-remember-password` 来「记住」会话，该参数会持久化 Steam 会话的登录密钥。
 
-### Can I run DepotDownloader while an account is already connected to Steam?
-Any connection to Steam will be closed if they share a LoginID. You can specify a different LoginID with `-loginid`.
+### 账号已连接到 Steam 时，可以运行 StarDepotDownloader 吗？
+如果共用同一个 LoginID，任何 Steam 连接都会被断开。你可以用 `-loginid` 指定不同的 LoginID。
 
-### Why doesn't my password containing special characters work? Do I have to specify the password on the command line?
-If you pass the `-password` parameter with a password that contains special characters, you will need to escape the command appropriately for the shell you are using. You do not have to include the `-password` parameter on the command line as long as you include a `-username`. You will be prompted to enter your password interactively.
+### 为什么包含特殊字符的密码无法使用？必须在命令行中指定密码吗？
+如果用 `-password` 参数传入包含特殊字符的密码，你需要按所用 Shell 的规则正确转义。只要指定了 `-username`，就不必在命令行中包含 `-password` 参数，程序会以交互方式提示你输入密码。
 
-### I am getting error 401 or no manifest code returned for old manifest ids
-Try logging in with a Steam account, this may happen when using anonymous account.
+### 下载旧 manifest id 时返回 401 或没有返回 manifest 代码
+尝试使用 Steam 账号登录，使用匿名账号时可能会出现此问题。
 
-Steam allows developers to block downloading old manifests, in which case no manifest code is returned even when parameters appear correct.
+Steam 允许开发者阻止下载旧 manifest，这种情况下即使参数看似正确，也不会返回 manifest 代码。
 
-### Why am I getting slow download speeds and frequent connection timeouts?
-When downloading old builds, cache server may not have the chunks readily available which makes downloading slower.
-Try increasing `-max-downloads` to saturate the network more.
+### 为什么下载速度慢且经常连接超时？
+下载旧版本时，缓存服务器可能没有现成的分块可用，从而导致下载变慢。
+尝试增大 `-max-downloads` 以更充分地利用网络带宽。

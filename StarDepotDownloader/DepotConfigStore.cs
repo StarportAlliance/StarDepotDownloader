@@ -7,7 +7,7 @@ using System.IO;
 using System.IO.Compression;
 using ProtoBuf;
 
-namespace DepotDownloader
+namespace StarDepotDownloader
 {
     [ProtoContract]
     public class DepotConfigStore

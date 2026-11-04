@@ -5,7 +5,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 
-namespace DepotDownloader
+namespace StarDepotDownloader
 {
     static class PlatformUtilities
     {

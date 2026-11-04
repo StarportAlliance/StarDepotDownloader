@@ -4,7 +4,7 @@
 using ProtoBuf;
 using ProtoBuf.Meta;
 
-namespace DepotDownloader
+namespace StarDepotDownloader
 {
 #pragma warning disable PBN9001
     [ProtoModel]

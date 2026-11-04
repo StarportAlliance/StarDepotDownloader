@@ -2,13 +2,15 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14</LangVersion>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <RollForward>LatestMajor</RollForward>
-    <Version>3.4.0</Version>
-    <Description>Steam Downloading Utility</Description>
-    <Authors>SteamRE Team</Authors>
-    <Copyright>Copyright © SteamRE Team 2025</Copyright>
-    <ApplicationIcon>..\Icon\DepotDownloader.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
+    <Name>StarDepotDownloader</Name>
+    <Description>基于 SteamKit2 的 Steam Depot 下载器</Description>
+    <Authors>SteamRE Team; StarportAlliance</Authors>
+    <Copyright>Copyright © SteamRE Team 2025; Copyright © StarportAlliance 2026</Copyright>
+    <ApplicationIcon>..\Icon\StarDepotDownloader.ico</ApplicationIcon>
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <TreatWarningsAsErrors Condition="'$(ContinuousIntegrationBuild)' == 'true'">true</TreatWarningsAsErrors>

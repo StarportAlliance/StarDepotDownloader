@@ -9,7 +9,7 @@ using System.IO.Compression;
 using System.IO.IsolatedStorage;
 using ProtoBuf;
 
-namespace DepotDownloader
+namespace StarDepotDownloader
 {
     [ProtoContract]
     public class AccountSettingsStore

@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 using SteamKit2;
 using SteamKit2.CDN;
 
-namespace DepotDownloader
+namespace StarDepotDownloader
 {
     class ContentDownloaderException(string value) : Exception(value)
     {
@@ -33,7 +33,7 @@ namespace DepotDownloader
         private static CDNClientPool cdnPool;
 
         private const string DEFAULT_DOWNLOAD_DIR = "depots";
-        private const string CONFIG_DIR = ".DepotDownloader";
+        private const string CONFIG_DIR = ".StarDepotDownloader";
         private static readonly string STAGING_DIR = Path.Combine(CONFIG_DIR, "staging");
 
         private static readonly FrozenSet<EWorkshopFileType> SupportedWorkshopFileTypes = FrozenSet.ToFrozenSet(new[]

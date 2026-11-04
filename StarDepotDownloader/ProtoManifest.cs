@@ -10,7 +10,7 @@ using System.Text;
 using ProtoBuf;
 using SteamKit2;
 
-namespace DepotDownloader
+namespace StarDepotDownloader
 {
     [ProtoContract]
     public class ProtoManifest

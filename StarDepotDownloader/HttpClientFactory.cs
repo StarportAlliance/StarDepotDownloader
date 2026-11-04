@@ -8,7 +8,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DepotDownloader
+namespace StarDepotDownloader
 {
     // This is based on the dotnet issue #44686 and its workaround at https://github.com/dotnet/runtime/issues/44686#issuecomment-733797994
     // We don't know if the IPv6 stack is functional.
@@ -22,7 +22,7 @@ namespace DepotDownloader
             });
 
             var assemblyVersion = typeof(HttpClientFactory).Assembly.GetName().Version.ToString(fieldCount: 3);
-            client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("DepotDownloader", assemblyVersion));
+            client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("StarDepotDownloader", assemblyVersion));
 
             return client;
         }
