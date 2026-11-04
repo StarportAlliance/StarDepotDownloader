@@ -1,7 +1,8 @@
-StarDepotDownloader
-===================
-
-基于 SteamKit2 的 Steam Depot 下载工具。
+<div align="center">
+  <img src="./Icon/StarDepotDownloader.svg" alt="StarDepotDownloader" width="128" height="128">
+  <h1>StarDepotDownloader</h1>
+  <p>基于 SteamKit2 的 Steam Depot 下载器</p>
+</div>
 
 ## 安装
 
