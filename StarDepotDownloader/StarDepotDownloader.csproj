@@ -5,7 +5,7 @@
     <LangVersion>14</LangVersion>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <RollForward>LatestMajor</RollForward>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <Name>StarDepotDownloader</Name>
     <Description>基于 SteamKit2 的 Steam Depot 下载器</Description>
     <Authors>SteamRE Team; StarportAlliance</Authors>
