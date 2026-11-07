@@ -80,19 +80,16 @@ namespace StarDepotDownloader
 
                     installDir = Path.Combine(depotPath, depotVersion.ToString());
                     Directory.CreateDirectory(installDir);
-
-                    Directory.CreateDirectory(Path.Combine(installDir, CONFIG_DIR));
-                    Directory.CreateDirectory(Path.Combine(installDir, STAGING_DIR));
                 }
                 else
                 {
                     Directory.CreateDirectory(Config.InstallDirectory);
 
                     installDir = Config.InstallDirectory;
-
-                    Directory.CreateDirectory(Path.Combine(installDir, CONFIG_DIR));
-                    Directory.CreateDirectory(Path.Combine(installDir, STAGING_DIR));
                 }
+
+                Directory.CreateDirectory(GetConfigDirectory(installDir));
+                Directory.CreateDirectory(Path.Combine(installDir, STAGING_DIR));
             }
             catch
             {
@@ -101,6 +98,11 @@ namespace StarDepotDownloader
 
             return true;
         }
+
+        static string GetConfigDirectory(string installRoot) =>
+            string.IsNullOrWhiteSpace(Config.MetadataDirectory)
+                ? Path.Combine(installRoot, CONFIG_DIR)
+                : Config.MetadataDirectory;
 
         static bool TestIsFileIncluded(string filename)
         {
@@ -464,14 +466,15 @@ namespace StarDepotDownloader
             cdnPool = new CDNClientPool(steam3, appId);
 
             // Load our configuration data containing the depots currently installed
-            var configPath = Config.InstallDirectory;
-            if (string.IsNullOrWhiteSpace(configPath))
+            var installRoot = Config.InstallDirectory;
+            if (string.IsNullOrWhiteSpace(installRoot))
             {
-                configPath = DEFAULT_DOWNLOAD_DIR;
+                installRoot = DEFAULT_DOWNLOAD_DIR;
             }
 
-            Directory.CreateDirectory(Path.Combine(configPath, CONFIG_DIR));
-            DepotConfigStore.LoadFromFile(Path.Combine(configPath, CONFIG_DIR, "depot.config"));
+            var configDir = GetConfigDirectory(installRoot);
+            Directory.CreateDirectory(configDir);
+            DepotConfigStore.LoadFromFile(Path.Combine(configDir, "depot.config"));
 
             await steam3?.RequestAppInfo(appId);
 
@@ -798,7 +801,7 @@ namespace StarDepotDownloader
 
             DepotManifest oldManifest = null;
             DepotManifest newManifest = null;
-            var configDir = Path.Combine(depot.InstallDir, CONFIG_DIR);
+            var configDir = GetConfigDirectory(depot.InstallDir);
 
             var lastManifestId = INVALID_MANIFEST_ID;
             DepotConfigStore.Instance.InstalledManifestIDs.TryGetValue(depot.DepotId, out lastManifestId);

@@ -15,6 +15,9 @@ namespace StarDepotDownloader
         public bool DownloadManifestOnly { get; set; }
         public string InstallDirectory { get; set; }
 
+        /// <summary>下载器元数据目录；为空时使用安装目录下的 .StarDepotDownloader。</summary>
+        public string MetadataDirectory { get; set; }
+
         /// <summary>是否允许读取 stdin（密码 / Steam Guard 验证码）。JSON 模式下必须为 false。</summary>
         public bool Interactive { get; set; } = true;
 

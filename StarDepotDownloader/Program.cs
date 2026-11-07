@@ -162,6 +162,7 @@ namespace StarDepotDownloader
             }
 
             ContentDownloader.Config.InstallDirectory = GetParameter<string>(args, "-dir");
+            ContentDownloader.Config.MetadataDirectory = GetParameter<string>(args, "-config-dir");
 
             ContentDownloader.Config.VerifyAll = HasParameter(args, "-verify-all") || HasParameter(args, "-verify_all") || HasParameter(args, "-validate");
 
@@ -560,6 +561,7 @@ namespace StarDepotDownloader
             Console.WriteLine("  -logout                  - clear cached credentials, then exit.");
             Console.WriteLine();
             Console.WriteLine("  -dir <installdir>        - the directory in which to place downloaded files.");
+            Console.WriteLine("  -config-dir <path>       - directory for downloader metadata (default: <installdir>/.StarDepotDownloader).");
             Console.WriteLine("  -filelist <file.txt>     - the name of a local file that contains a list of files to download (from the manifest).");
             Console.WriteLine("                             prefix file path with `regex:` if you want to match with regex. each file path should be on their own line.");
             Console.WriteLine();
