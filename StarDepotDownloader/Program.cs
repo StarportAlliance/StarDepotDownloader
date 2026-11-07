@@ -21,6 +21,34 @@ namespace StarDepotDownloader
 
         static async Task<int> Main(string[] args)
         {
+            try
+            {
+                return await RunAsync(args);
+            }
+            catch (SddException ex)
+            {
+                Report(ex.Code, ex.Message);
+                return ex.ExitCode;
+            }
+            catch (ContentDownloaderException ex)
+            {
+                Report(SddErrorCodes.DownloadFailed, ex.Message);
+                return 1;
+            }
+            catch (OperationCanceledException)
+            {
+                Report(SddErrorCodes.Canceled, "Download canceled.");
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                Report(SddErrorCodes.Internal, ex.Message);
+                return 1;
+            }
+        }
+
+        static async Task<int> RunAsync(string[] args)
+        {
             if (args.Length == 0)
             {
                 PrintVersion();
@@ -38,9 +66,8 @@ namespace StarDepotDownloader
 
             DebugLog.Enabled = false;
 
-            AccountSettingsStore.LoadFromFile("account.config");
-
-            #region Common Options
+            consumedArgs = new bool[args.Length];
+            SddOutput.Initialize(HasParameter(args, "--json"));
 
             // Not using HasParameter because it is case insensitive
             if (args.Length == 1 && (args[0] == "-V" || args[0] == "--version"))
@@ -49,7 +76,8 @@ namespace StarDepotDownloader
                 return 0;
             }
 
-            consumedArgs = new bool[args.Length];
+            var accountFile = GetParameter<string>(args, "-account-file");
+            AccountSettingsStore.LoadFromFile(accountFile ?? "account.config");
 
             if (HasParameter(args, "-debug"))
             {
@@ -69,19 +97,18 @@ namespace StarDepotDownloader
             ContentDownloader.Config.RememberPassword = HasParameter(args, "-remember-password");
             ContentDownloader.Config.UseQrCode = HasParameter(args, "-qr");
             ContentDownloader.Config.SkipAppConfirmation = HasParameter(args, "-no-mobile");
+            ContentDownloader.Config.Interactive = !SddOutput.JsonMode;
 
             if (username == null)
             {
                 if (ContentDownloader.Config.RememberPassword && !ContentDownloader.Config.UseQrCode)
                 {
-                    Console.WriteLine("Error: -remember-password can not be used without -username or -qr.");
-                    return 1;
+                    throw new SddException(SddErrorCodes.InvalidArguments, "Error: -remember-password can not be used without -username or -qr.", 1);
                 }
             }
             else if (ContentDownloader.Config.UseQrCode)
             {
-                Console.WriteLine("Error: -qr can not be used with -username.");
-                return 1;
+                throw new SddException(SddErrorCodes.InvalidArguments, "Error: -qr can not be used with -username.", 1);
             }
 
             ContentDownloader.Config.DownloadManifestOnly = HasParameter(args, "-manifest-only");
@@ -157,102 +184,46 @@ namespace StarDepotDownloader
             ContentDownloader.Config.MaxDownloads = GetParameter(args, "-max-downloads", 8);
             ContentDownloader.Config.LoginID = HasParameter(args, "-loginid") ? GetParameter<uint>(args, "-loginid") : null;
 
-            #endregion
+            if (HasParameter(args, "-auth-status"))
+            {
+                return HandleAuthStatus(username);
+            }
+
+            if (HasParameter(args, "-logout"))
+            {
+                return HandleLogout();
+            }
+
+            if (HasParameter(args, "-login-only"))
+            {
+                return HandleLoginOnly(username, password);
+            }
 
             var appId = GetParameter(args, "-app", ContentDownloader.INVALID_APP_ID);
             if (appId == ContentDownloader.INVALID_APP_ID)
             {
-                Console.WriteLine("Error: -app not specified!");
-                return 1;
+                throw new SddException(SddErrorCodes.InvalidArguments, "Error: -app not specified!", 1);
             }
 
             var pubFile = GetParameter(args, "-pubfile", ContentDownloader.INVALID_MANIFEST_ID);
             var ugcId = GetParameter(args, "-ugc", ContentDownloader.INVALID_MANIFEST_ID);
+            Func<Task> download;
             if (pubFile != ContentDownloader.INVALID_MANIFEST_ID)
             {
-                #region Pubfile Downloading
-
-                PrintUnconsumedArgs(args);
-
-                if (InitializeSteam(username, password))
-                {
-                    try
-                    {
-                        await ContentDownloader.DownloadPubfileAsync(appId, pubFile).ConfigureAwait(false);
-                    }
-                    catch (Exception ex) when (
-                        ex is ContentDownloaderException
-                        || ex is OperationCanceledException)
-                    {
-                        Console.WriteLine(ex.Message);
-                        return 1;
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine("Download failed to due to an unhandled exception: {0}", e.Message);
-                        throw;
-                    }
-                    finally
-                    {
-                        ContentDownloader.ShutdownSteam3();
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Error: InitializeSteam failed");
-                    return 1;
-                }
-
-                #endregion
+                download = () => ContentDownloader.DownloadPubfileAsync(appId, pubFile);
             }
             else if (ugcId != ContentDownloader.INVALID_MANIFEST_ID)
             {
-                #region UGC Downloading
-
-                PrintUnconsumedArgs(args);
-
-                if (InitializeSteam(username, password))
-                {
-                    try
-                    {
-                        await ContentDownloader.DownloadUGCAsync(appId, ugcId).ConfigureAwait(false);
-                    }
-                    catch (Exception ex) when (
-                        ex is ContentDownloaderException
-                        || ex is OperationCanceledException)
-                    {
-                        Console.WriteLine(ex.Message);
-                        return 1;
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine("Download failed to due to an unhandled exception: {0}", e.Message);
-                        throw;
-                    }
-                    finally
-                    {
-                        ContentDownloader.ShutdownSteam3();
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Error: InitializeSteam failed");
-                    return 1;
-                }
-
-                #endregion
+                download = () => ContentDownloader.DownloadUGCAsync(appId, ugcId);
             }
             else
             {
-                #region App downloading
-
                 var branch = GetParameter<string>(args, "-branch") ?? GetParameter<string>(args, "-beta") ?? ContentDownloader.DEFAULT_BRANCH;
                 ContentDownloader.Config.BetaPassword = GetParameter<string>(args, "-branchpassword") ?? GetParameter<string>(args, "-betapassword");
 
                 if (!string.IsNullOrEmpty(ContentDownloader.Config.BetaPassword) && string.IsNullOrEmpty(branch))
                 {
-                    Console.WriteLine("Error: Cannot specify -branchpassword when -branch is not specified.");
-                    return 1;
+                    throw new SddException(SddErrorCodes.InvalidArguments, "Error: Cannot specify -branchpassword when -branch is not specified.", 1);
                 }
 
                 ContentDownloader.Config.DownloadAllPlatforms = HasParameter(args, "-all-platforms");
@@ -261,8 +232,7 @@ namespace StarDepotDownloader
 
                 if (ContentDownloader.Config.DownloadAllPlatforms && !string.IsNullOrEmpty(os))
                 {
-                    Console.WriteLine("Error: Cannot specify -os when -all-platforms is specified.");
-                    return 1;
+                    throw new SddException(SddErrorCodes.InvalidArguments, "Error: Cannot specify -os when -all-platforms is specified.", 1);
                 }
 
                 ContentDownloader.Config.DownloadAllArchs = HasParameter(args, "-all-archs");
@@ -271,8 +241,7 @@ namespace StarDepotDownloader
 
                 if (ContentDownloader.Config.DownloadAllArchs && !string.IsNullOrEmpty(arch))
                 {
-                    Console.WriteLine("Error: Cannot specify -osarch when -all-archs is specified.");
-                    return 1;
+                    throw new SddException(SddErrorCodes.InvalidArguments, "Error: Cannot specify -osarch when -all-archs is specified.", 1);
                 }
 
                 ContentDownloader.Config.DownloadAllLanguages = HasParameter(args, "-all-languages");
@@ -280,14 +249,12 @@ namespace StarDepotDownloader
 
                 if (ContentDownloader.Config.DownloadAllLanguages && !string.IsNullOrEmpty(language))
                 {
-                    Console.WriteLine("Error: Cannot specify -language when -all-languages is specified.");
-                    return 1;
+                    throw new SddException(SddErrorCodes.InvalidArguments, "Error: Cannot specify -language when -all-languages is specified.", 1);
                 }
 
                 var lv = HasParameter(args, "-lowviolence");
 
                 var depotManifestIds = new List<(uint, ulong)>();
-                var isUGC = false;
 
                 var depotIdList = GetParameterList<uint>(args, "-depot");
                 var manifestIdList = GetParameterList<ulong>(args, "-manifest");
@@ -295,8 +262,7 @@ namespace StarDepotDownloader
                 {
                     if (depotIdList.Count != manifestIdList.Count)
                     {
-                        Console.WriteLine("Error: -manifest requires one id for every -depot specified");
-                        return 1;
+                        throw new SddException(SddErrorCodes.InvalidArguments, "Error: -manifest requires one id for every -depot specified", 1);
                     }
 
                     var zippedDepotManifest = depotIdList.Zip(manifestIdList, (depotId, manifestId) => (depotId, manifestId));
@@ -307,38 +273,28 @@ namespace StarDepotDownloader
                     depotManifestIds.AddRange(depotIdList.Select(depotId => (depotId, ContentDownloader.INVALID_MANIFEST_ID)));
                 }
 
-                PrintUnconsumedArgs(args);
+                download = () => ContentDownloader.DownloadAppAsync(appId, depotManifestIds, branch, os, arch, language, lv, false);
+            }
 
-                if (InitializeSteam(username, password))
-                {
-                    try
-                    {
-                        await ContentDownloader.DownloadAppAsync(appId, depotManifestIds, branch, os, arch, language, lv, isUGC).ConfigureAwait(false);
-                    }
-                    catch (Exception ex) when (
-                        ex is ContentDownloaderException
-                        || ex is OperationCanceledException)
-                    {
-                        Console.WriteLine(ex.Message);
-                        return 1;
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine("Download failed to due to an unhandled exception: {0}", e.Message);
-                        throw;
-                    }
-                    finally
-                    {
-                        ContentDownloader.ShutdownSteam3();
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Error: InitializeSteam failed");
-                    return 1;
-                }
+            PrintUnconsumedArgs(args);
 
-                #endregion
+            if (!InitializeSteam(username, password))
+            {
+                throw CreateAuthException("Unable to get steam3 credentials.");
+            }
+
+            if (SddOutput.JsonMode)
+            {
+                SddOutput.Auth(ContentDownloader.AccountName);
+            }
+
+            try
+            {
+                await download().ConfigureAwait(false);
+            }
+            finally
+            {
+                ContentDownloader.ShutdownSteam3();
             }
 
             return 0;
@@ -350,6 +306,12 @@ namespace StarDepotDownloader
             {
                 if (username != null && password == null && (!ContentDownloader.Config.RememberPassword || !AccountSettingsStore.Instance.LoginTokens.ContainsKey(username)))
                 {
+                    if (!ContentDownloader.Config.Interactive)
+                    {
+                        ContentDownloader.SetAuthFailure(SddErrorCodes.AuthRequired);
+                        throw new SddException(SddErrorCodes.AuthRequired, "Stored credentials are unavailable and interactive login is disabled.", 2);
+                    }
+
                     if (AccountSettingsStore.Instance.LoginTokens.ContainsKey(username))
                     {
                         Console.WriteLine($"Account \"{username}\" has stored credentials. Did you forget to specify -remember-password?");
@@ -393,6 +355,90 @@ namespace StarDepotDownloader
             }
 
             return ContentDownloader.InitializeSteam3(username, password);
+        }
+
+        static void Report(string code, string message)
+        {
+            SddOutput.Error(code, message);
+            Console.Error.WriteLine(message);
+        }
+
+        static SddException CreateAuthException(string message)
+        {
+            string code = ContentDownloader.LastAuthFailureCode ?? SddErrorCodes.AuthFailed;
+            int exitCode = code == SddErrorCodes.AuthRequired ? 2 : 3;
+            return new SddException(code, message, exitCode);
+        }
+
+        static int HandleAuthStatus(string username)
+        {
+            var tokens = AccountSettingsStore.Instance.LoginTokens;
+            string account =
+                username is null
+                    ? tokens.Keys.FirstOrDefault()
+                    : tokens.ContainsKey(username) ? username : null;
+
+            bool hasCredentials = account is not null;
+            if (SddOutput.JsonMode)
+            {
+                SddOutput.Status(hasCredentials, account);
+            }
+            else
+            {
+                Console.WriteLine(hasCredentials ? $"Logged in as {account}." : "Not logged in.");
+            }
+
+            return 0;
+        }
+
+        static int HandleLogout()
+        {
+            AccountSettingsStore.Instance.LoginTokens.Clear();
+            AccountSettingsStore.Instance.GuardData.Clear();
+            AccountSettingsStore.Save();
+
+            if (SddOutput.JsonMode)
+            {
+                SddOutput.Status(false, null);
+            }
+            else
+            {
+                Console.WriteLine("Logged out.");
+            }
+
+            return 0;
+        }
+
+        static int HandleLoginOnly(string username, string password)
+        {
+            if (username is null && !ContentDownloader.Config.UseQrCode)
+            {
+                throw new SddException(SddErrorCodes.AuthRequired, "Error: -login-only requires -username or -qr.", 2);
+            }
+
+            if (username is not null && ContentDownloader.Config.UseQrCode)
+            {
+                throw new SddException(SddErrorCodes.InvalidArguments, "Error: -qr can not be used with -username.", 1);
+            }
+
+            if (!InitializeSteam(username, password))
+            {
+                throw CreateAuthException("Unable to get steam3 credentials.");
+            }
+
+            try
+            {
+                if (SddOutput.JsonMode)
+                {
+                    SddOutput.Auth(ContentDownloader.AccountName);
+                }
+            }
+            finally
+            {
+                ContentDownloader.ShutdownSteam3();
+            }
+
+            return 0;
         }
 
         static int IndexOfParam(string[] args, string param)
@@ -508,6 +554,10 @@ namespace StarDepotDownloader
             Console.WriteLine("                             use -username <username> -remember-password as login credentials.");
             Console.WriteLine("  -qr                      - display a login QR code to be scanned with the Steam mobile app");
             Console.WriteLine("  -no-mobile               - prefer entering a 2FA code instead of prompting to accept in the Steam mobile app");
+            Console.WriteLine("  -account-file <path>     - credential file to use instead of the per-assembly isolated storage.");
+            Console.WriteLine("  -auth-status             - report whether cached credentials exist, then exit.");
+            Console.WriteLine("  -login-only              - perform login only, then exit (requires -username or -qr).");
+            Console.WriteLine("  -logout                  - clear cached credentials, then exit.");
             Console.WriteLine();
             Console.WriteLine("  -dir <installdir>        - the directory in which to place downloaded files.");
             Console.WriteLine("  -filelist <file.txt>     - the name of a local file that contains a list of files to download (from the manifest).");
@@ -521,6 +571,7 @@ namespace StarDepotDownloader
             Console.WriteLine("  -use-lancache            - forces downloads over the local network via a Lancache instance.");
             Console.WriteLine();
             Console.WriteLine("  -debug                   - enable verbose debug logging.");
+            Console.WriteLine("  --json                   - emit NDJSON events on stdout, human readable output on stderr.");
             Console.WriteLine("  -V or --version          - print version and runtime.");
         }
 

@@ -20,6 +20,9 @@ namespace StarDepotDownloader
     {
         public bool IsLoggedOn { get; private set; }
 
+        /// <summary>成功登录后解析到的账号名。</summary>
+        public string AccountName { get; private set; }
+
         public ReadOnlyCollection<SteamApps.LicenseListCallback.License> Licenses
         {
             get;
@@ -609,6 +612,13 @@ namespace StarDepotDownloader
 
                 if (!isAccessToken)
                 {
+                    if (!ContentDownloader.Config.Interactive)
+                    {
+                        ContentDownloader.SetAuthFailure(SddErrorCodes.AuthRequired);
+                        Console.WriteLine("This account requires interactive Steam Guard verification.");
+                        return;
+                    }
+
                     Console.WriteLine("This account is protected by Steam Guard.");
                 }
 
@@ -624,6 +634,7 @@ namespace StarDepotDownloader
                 {
                     AccountSettingsStore.Instance.LoginTokens.Remove(logonDetails.Username);
                     AccountSettingsStore.Save();
+                    ContentDownloader.SetAuthFailure(SddErrorCodes.AuthRequired);
 
                     // TODO: Handle gracefully by falling back to password prompt?
                     Console.WriteLine($"Access token was rejected ({loggedOn.Result}).");
@@ -672,6 +683,7 @@ namespace StarDepotDownloader
 
             Console.WriteLine(" Done!");
 
+            AccountName = logonDetails.Username;
             this.seq++;
             IsLoggedOn = true;
 
@@ -709,6 +721,13 @@ namespace StarDepotDownloader
             // Encode the link as a QR code
             using var qrGenerator = new QRCodeGenerator();
             var qrCodeData = qrGenerator.CreateQrCode(challengeUrl, QRCodeGenerator.ECCLevel.L);
+
+            if (SddOutput.JsonMode)
+            {
+                SddOutput.Qr(qrCodeData.ModuleMatrix);
+                return;
+            }
+
             using var qrCode = new AsciiQRCode(qrCodeData);
             var qrCodeAsAsciiArt = qrCode.GetLineByLineGraphic(1, drawQuietZones: true);
 

@@ -44,16 +44,19 @@ namespace StarDepotDownloader
         public static AccountSettingsStore Instance;
         static readonly IsolatedStorageFile IsolatedStorage = IsolatedStorageFile.GetUserStoreForAssembly();
 
+        // 绝对路径走普通文件，其余沿用旧版 IsolatedStorage，避免破坏 CLI 历史行为
+        static bool UsesDirectFile(string filename) => Path.IsPathRooted(filename);
+
         public static void LoadFromFile(string filename)
         {
             if (Loaded)
                 throw new Exception("Config already loaded");
 
-            if (IsolatedStorage.FileExists(filename))
+            if (Exists(filename))
             {
                 try
                 {
-                    using var fs = IsolatedStorage.OpenFile(filename, FileMode.Open, FileAccess.Read);
+                    using var fs = OpenRead(filename);
                     using var ds = new DeflateStream(fs, CompressionMode.Decompress);
                     Instance = ProtobufModel.Instance.Deserialize<AccountSettingsStore>(ds);
                 }
@@ -78,7 +81,7 @@ namespace StarDepotDownloader
 
             try
             {
-                using var fs = IsolatedStorage.OpenFile(Instance.FileName, FileMode.Create, FileAccess.Write);
+                using var fs = OpenWrite(Instance.FileName);
                 using var ds = new DeflateStream(fs, CompressionMode.Compress);
                 ProtobufModel.Instance.Serialize(ds, Instance);
             }
@@ -86,6 +89,30 @@ namespace StarDepotDownloader
             {
                 Console.WriteLine("Failed to save account settings: {0}", ex.Message);
             }
+        }
+
+        static bool Exists(string filename) =>
+            UsesDirectFile(filename) ? File.Exists(filename) : IsolatedStorage.FileExists(filename);
+
+        static Stream OpenRead(string filename) =>
+            UsesDirectFile(filename)
+                ? File.Open(filename, FileMode.Open, FileAccess.Read)
+                : IsolatedStorage.OpenFile(filename, FileMode.Open, FileAccess.Read);
+
+        static Stream OpenWrite(string filename)
+        {
+            if (!UsesDirectFile(filename))
+            {
+                return IsolatedStorage.OpenFile(filename, FileMode.Create, FileAccess.Write);
+            }
+
+            string directory = Path.GetDirectoryName(filename);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            return File.Open(filename, FileMode.Create, FileAccess.Write);
         }
     }
 }

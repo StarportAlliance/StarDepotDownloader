@@ -32,6 +32,14 @@ namespace StarDepotDownloader
         private static Steam3Session steam3;
         private static CDNClientPool cdnPool;
 
+        /// <summary>登录阶段要求的交互失败码；为 null 表示普通认证失败。</summary>
+        public static string LastAuthFailureCode { get; private set; }
+
+        /// <summary>当前会话登录的账号名。</summary>
+        public static string AccountName => steam3?.AccountName;
+
+        public static void SetAuthFailure(string code) => LastAuthFailureCode = code;
+
         private const string DEFAULT_DOWNLOAD_DIR = "depots";
         private const string CONFIG_DIR = ".StarDepotDownloader";
         private static readonly string STAGING_DIR = Path.Combine(CONFIG_DIR, "staging");
@@ -479,7 +487,11 @@ namespace StarDepotDownloader
                 else
                 {
                     var contentName = GetAppName(appId);
-                    throw new ContentDownloaderException(string.Format("App {0} ({1}) is not available from this account.", appId, contentName));
+                    throw new SddException(
+                        SddErrorCodes.DepotUnavailable,
+                        string.Format("App {0} ({1}) is not available from this account.", appId, contentName),
+                        4
+                    );
                 }
             }
 
@@ -586,11 +598,20 @@ namespace StarDepotDownloader
                 }
             }
 
+            if (infos.Count == 0)
+            {
+                throw new SddException(
+                    SddErrorCodes.DepotUnavailable,
+                    $"None of the requested depots are available from this account: {string.Join(", ", depotIdsExpected)}.",
+                    4
+                );
+            }
+
             Console.WriteLine();
 
             try
             {
-                await DownloadSteam3Async(infos).ConfigureAwait(false);
+                await DownloadSteam3Async(appId, infos).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -699,7 +720,7 @@ namespace StarDepotDownloader
             public ulong depotBytesUncompressed;
         }
 
-        private static async Task DownloadSteam3Async(List<DepotDownloadInfo> depots)
+        private static async Task DownloadSteam3Async(uint appId, List<DepotDownloadInfo> depots)
         {
             Ansi.Progress(Ansi.ProgressState.Indeterminate);
 
@@ -739,12 +760,31 @@ namespace StarDepotDownloader
                 }
             }
 
+            if (!Config.DownloadManifestOnly)
+            {
+                SddOutput.Start(
+                    appId,
+                    depotsToDownload
+                        .Select(d => (d.depotDownloadInfo.DepotId, d.depotDownloadInfo.ManifestId)),
+                    downloadCounter.completeDownloadSize
+                );
+            }
+
             foreach (var depotFileData in depotsToDownload)
             {
                 await DownloadSteam3AsyncDepotFiles(cts, downloadCounter, depotFileData, allFileNamesAllDepots);
             }
 
             Ansi.Progress(Ansi.ProgressState.Hidden);
+
+            if (!Config.DownloadManifestOnly)
+            {
+                SddOutput.Progress(
+                    downloadCounter.completeDownloadSize,
+                    downloadCounter.completeDownloadSize
+                );
+                SddOutput.Done(downloadCounter.totalBytesUncompressed);
+            }
 
             Console.WriteLine("Total downloaded: {0} bytes ({1} bytes uncompressed) from {2} depots",
                 downloadCounter.totalBytesCompressed, downloadCounter.totalBytesUncompressed, depots.Count);
@@ -1178,7 +1218,10 @@ namespace StarDepotDownloader
                     lock (depotDownloadCounter)
                     {
                         depotDownloadCounter.sizeDownloaded += file.TotalSize;
-                        Console.WriteLine("{0,6:#00.00}% {1}", (depotDownloadCounter.sizeDownloaded / (float)depotDownloadCounter.completeDownloadSize) * 100.0f, fileFinalPath);
+                        if (!SddOutput.JsonMode)
+                        {
+                            Console.WriteLine("{0,6:#00.00}% {1}", (depotDownloadCounter.sizeDownloaded / (float)depotDownloadCounter.completeDownloadSize) * 100.0f, fileFinalPath);
+                        }
                     }
 
                     lock (downloadCounter)
@@ -1369,9 +1412,13 @@ namespace StarDepotDownloader
                 downloadCounter.totalBytesUncompressed += chunk.UncompressedLength;
 
                 Ansi.Progress(downloadCounter.totalBytesUncompressed, downloadCounter.completeDownloadSize);
+                SddOutput.Progress(
+                    downloadCounter.totalBytesUncompressed,
+                    downloadCounter.completeDownloadSize
+                );
             }
 
-            if (remainingChunks == 0)
+            if (remainingChunks == 0 && !SddOutput.JsonMode)
             {
                 var fileFinalPath = Path.Combine(depot.InstallDir, file.FileName);
                 Console.WriteLine("{0,6:#00.00}% {1}", (sizeDownloaded / (float)depotDownloadCounter.completeDownloadSize) * 100.0f, fileFinalPath);

@@ -13,6 +13,7 @@ namespace StarDepotDownloader
         /// <inheritdoc />
         public Task<string> GetDeviceCodeAsync(bool previousCodeWasIncorrect)
         {
+            EnsureInteractive();
             if (previousCodeWasIncorrect)
             {
                 Console.Error.WriteLine("The previous 2-factor auth code you have provided is incorrect.");
@@ -38,6 +39,7 @@ namespace StarDepotDownloader
         /// <inheritdoc />
         public Task<string> GetEmailCodeAsync(string email, bool previousCodeWasIncorrect)
         {
+            EnsureInteractive();
             if (previousCodeWasIncorrect)
             {
                 Console.Error.WriteLine("The previous 2-factor auth code you have provided is incorrect.");
@@ -63,6 +65,7 @@ namespace StarDepotDownloader
         /// <inheritdoc />
         public Task<bool> AcceptDeviceConfirmationAsync()
         {
+            EnsureInteractive();
             if (ContentDownloader.Config.SkipAppConfirmation)
             {
                 return Task.FromResult(false);
@@ -71,6 +74,21 @@ namespace StarDepotDownloader
             Console.Error.WriteLine("STEAM GUARD! Use the Steam Mobile App to confirm your sign in...");
 
             return Task.FromResult(true);
+        }
+
+        static void EnsureInteractive()
+        {
+            if (ContentDownloader.Config.Interactive)
+            {
+                return;
+            }
+
+            ContentDownloader.SetAuthFailure(SddErrorCodes.AuthRequired);
+            throw new SddException(
+                SddErrorCodes.AuthRequired,
+                "Steam requires interactive verification, but interactive login is disabled.",
+                2
+            );
         }
     }
 }

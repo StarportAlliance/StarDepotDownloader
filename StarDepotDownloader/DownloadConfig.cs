@@ -15,6 +15,9 @@ namespace StarDepotDownloader
         public bool DownloadManifestOnly { get; set; }
         public string InstallDirectory { get; set; }
 
+        /// <summary>是否允许读取 stdin（密码 / Steam Guard 验证码）。JSON 模式下必须为 false。</summary>
+        public bool Interactive { get; set; } = true;
+
         public bool UsingFileList { get; set; }
         public HashSet<string> FilesToDownload { get; set; }
         public List<Regex> FilesToDownloadRegex { get; set; }
