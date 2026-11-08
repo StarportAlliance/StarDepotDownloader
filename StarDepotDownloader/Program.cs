@@ -187,7 +187,7 @@ namespace StarDepotDownloader
 
             if (HasParameter(args, "-auth-status"))
             {
-                return HandleAuthStatus(username, HasParameter(args, "-online"));
+                return await HandleAuthStatus(username, HasParameter(args, "-online"));
             }
 
             if (HasParameter(args, "-logout"))
@@ -371,7 +371,7 @@ namespace StarDepotDownloader
             return new SddException(code, message, exitCode);
         }
 
-        static int HandleAuthStatus(string username, bool online)
+        static async Task<int> HandleAuthStatus(string username, bool online)
         {
             var tokens = AccountSettingsStore.Instance.LoginTokens;
             string account =
@@ -390,36 +390,65 @@ namespace StarDepotDownloader
                     );
                 }
 
-                return HandleOnlineAuthStatus(account);
+                return await HandleOnlineAuthStatus(account);
             }
 
             EmitAuthStatus(account is not null, account);
             return 0;
         }
 
-        static int HandleOnlineAuthStatus(string account)
+        static async Task<int> HandleOnlineAuthStatus(string account)
         {
-            if (!InitializeSteam(account, null))
+            var tokens = AccountSettingsStore.Instance.LoginTokens;
+            if (!tokens.TryGetValue(account, out string token) || string.IsNullOrEmpty(token))
             {
-                // 连接失败不能算鉴权失败，否则启动器会把网络问题当成 token 过期
-                string code = ContentDownloader.LastAuthFailureCode ?? SddErrorCodes.Internal;
-                throw new SddException(
-                    code,
-                    "Unable to validate cached Steam credentials.",
-                    code == SddErrorCodes.AuthRequired ? 2 : 3
-                );
+                EmitAuthStatus(false, account);
+                return 0;
             }
 
-            try
+            // 解析不出 sub 说明缓存不是本工具产出的 token，直接按内部错误处理，不回退到 CM 登录
+            if (!SteamTokenValidator.TryReadClaims(token, out ulong steamId, out DateTimeOffset? expiresAt))
             {
-                EmitAuthStatus(true, ContentDownloader.AccountName ?? account);
-            }
-            finally
-            {
-                ContentDownloader.ShutdownSteam3();
+                throw new SddException(SddErrorCodes.Internal, "Stored credentials are not a readable Steam token.", 3);
             }
 
-            return 0;
+            if (expiresAt is { } expiry && expiry <= DateTimeOffset.UtcNow)
+            {
+                tokens.Remove(account);
+                AccountSettingsStore.Save();
+                throw new SddException(SddErrorCodes.AuthRequired, $"Cached credentials for \"{account}\" have expired.", 2);
+            }
+
+            var validation = await SteamTokenValidator.ValidateAsync(steamId, token).ConfigureAwait(false);
+
+            switch (validation.Status)
+            {
+                case SteamTokenValidationStatus.Accepted:
+                    if (!string.IsNullOrEmpty(validation.RenewedToken) && validation.RenewedToken != token)
+                    {
+                        tokens[account] = validation.RenewedToken;
+                        AccountSettingsStore.Save();
+                    }
+
+                    EmitAuthStatus(true, account);
+                    return 0;
+
+                case SteamTokenValidationStatus.Rejected:
+                    tokens.Remove(account);
+                    AccountSettingsStore.Save();
+                    throw new SddException(
+                        SddErrorCodes.AuthRequired,
+                        $"Steam rejected the cached credentials for \"{account}\" ({validation.Result}).",
+                        2
+                    );
+
+                default:
+                    throw new SddException(
+                        SddErrorCodes.Internal,
+                        $"Unable to validate cached Steam credentials: {validation.Error}",
+                        3
+                    );
+            }
         }
 
         static void EmitAuthStatus(bool hasCredentials, string account)

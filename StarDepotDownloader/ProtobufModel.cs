@@ -11,6 +11,8 @@ namespace StarDepotDownloader
     [ProtoSerializable(typeof(AccountSettingsStore))]
     [ProtoSerializable(typeof(DepotConfigStore))]
     [ProtoSerializable(typeof(ProtoManifest))]
+    [ProtoSerializable(typeof(GenerateForAppRequest))]
+    [ProtoSerializable(typeof(GenerateForAppResponse))]
     sealed partial class ProtobufModel : TypeModel
     {
     }
