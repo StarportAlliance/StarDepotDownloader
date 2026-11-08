@@ -187,7 +187,7 @@ namespace StarDepotDownloader
 
             if (HasParameter(args, "-auth-status"))
             {
-                return HandleAuthStatus(username);
+                return HandleAuthStatus(username, HasParameter(args, "-online"));
             }
 
             if (HasParameter(args, "-logout"))
@@ -371,7 +371,7 @@ namespace StarDepotDownloader
             return new SddException(code, message, exitCode);
         }
 
-        static int HandleAuthStatus(string username)
+        static int HandleAuthStatus(string username, bool online)
         {
             var tokens = AccountSettingsStore.Instance.LoginTokens;
             string account =
@@ -379,7 +379,51 @@ namespace StarDepotDownloader
                     ? tokens.Keys.FirstOrDefault()
                     : tokens.ContainsKey(username) ? username : null;
 
-            bool hasCredentials = account is not null;
+            if (online && account is not null)
+            {
+                if (!ContentDownloader.Config.RememberPassword)
+                {
+                    throw new SddException(
+                        SddErrorCodes.InvalidArguments,
+                        "Error: -online requires -remember-password.",
+                        1
+                    );
+                }
+
+                return HandleOnlineAuthStatus(account);
+            }
+
+            EmitAuthStatus(account is not null, account);
+            return 0;
+        }
+
+        static int HandleOnlineAuthStatus(string account)
+        {
+            if (!InitializeSteam(account, null))
+            {
+                // 连接失败不能算鉴权失败，否则启动器会把网络问题当成 token 过期
+                string code = ContentDownloader.LastAuthFailureCode ?? SddErrorCodes.Internal;
+                throw new SddException(
+                    code,
+                    "Unable to validate cached Steam credentials.",
+                    code == SddErrorCodes.AuthRequired ? 2 : 3
+                );
+            }
+
+            try
+            {
+                EmitAuthStatus(true, ContentDownloader.AccountName ?? account);
+            }
+            finally
+            {
+                ContentDownloader.ShutdownSteam3();
+            }
+
+            return 0;
+        }
+
+        static void EmitAuthStatus(bool hasCredentials, string account)
+        {
             if (SddOutput.JsonMode)
             {
                 SddOutput.Status(hasCredentials, account);
@@ -388,8 +432,6 @@ namespace StarDepotDownloader
             {
                 Console.WriteLine(hasCredentials ? $"Logged in as {account}." : "Not logged in.");
             }
-
-            return 0;
         }
 
         static int HandleLogout()
@@ -557,6 +599,7 @@ namespace StarDepotDownloader
             Console.WriteLine("  -no-mobile               - prefer entering a 2FA code instead of prompting to accept in the Steam mobile app");
             Console.WriteLine("  -account-file <path>     - credential file to use instead of the per-assembly isolated storage.");
             Console.WriteLine("  -auth-status             - report whether cached credentials exist, then exit.");
+            Console.WriteLine("  -online                  - with -auth-status, validate cached credentials against Steam (requires -remember-password).");
             Console.WriteLine("  -login-only              - perform login only, then exit (requires -username or -qr).");
             Console.WriteLine("  -logout                  - clear cached credentials, then exit.");
             Console.WriteLine();
