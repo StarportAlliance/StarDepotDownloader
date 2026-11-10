@@ -393,6 +393,17 @@ namespace StarDepotDownloader
             Disconnect(sendLogOff);
         }
 
+        // AsyncJob 被连接断开终止时自身不携带信息，换成人能看懂的说明
+        private static void FailAuthentication(Exception ex)
+        {
+            string reason =
+                ex is AsyncJobFailedException
+                    ? "Steam connection was lost during login."
+                    : ex.Message;
+            Console.Error.WriteLine("Failed to authenticate with Steam: " + reason);
+            ContentDownloader.SetAuthFailureReason(reason);
+        }
+
         public void Disconnect(bool sendLogOff = true)
         {
             if (sendLogOff)
@@ -463,9 +474,14 @@ namespace StarDepotDownloader
                         {
                             return;
                         }
+                        catch (AsyncJobFailedException)
+                        {
+                            // CM 重定向会终止在途请求，重连后由新的 ConnectedCallback 续跑
+                            return;
+                        }
                         catch (Exception ex)
                         {
-                            Console.Error.WriteLine("Failed to authenticate with Steam: " + ex.Message);
+                            FailAuthentication(ex);
                             Abort(false);
                             return;
                         }
@@ -500,9 +516,14 @@ namespace StarDepotDownloader
                         {
                             return;
                         }
+                        catch (AsyncJobFailedException)
+                        {
+                            // CM 重定向会终止在途请求，重连后由新的 ConnectedCallback 续跑
+                            return;
+                        }
                         catch (Exception ex)
                         {
-                            Console.Error.WriteLine("Failed to authenticate with Steam: " + ex.Message);
+                            FailAuthentication(ex);
                             Abort(false);
                             return;
                         }
@@ -540,9 +561,14 @@ namespace StarDepotDownloader
                     {
                         return;
                     }
+                    catch (AsyncJobFailedException)
+                    {
+                        // CM 重定向会终止在途请求，重连后由新的 ConnectedCallback 续跑
+                        return;
+                    }
                     catch (Exception ex)
                     {
-                        Console.Error.WriteLine("Failed to authenticate with Steam: " + ex.Message);
+                        FailAuthentication(ex);
                         Abort(false);
                         return;
                     }

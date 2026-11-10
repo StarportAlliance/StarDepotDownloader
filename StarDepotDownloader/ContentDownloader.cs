@@ -38,7 +38,12 @@ namespace StarDepotDownloader
         /// <summary>当前会话登录的账号名。</summary>
         public static string AccountName => steam3?.AccountName;
 
+        /// <summary>登录阶段失败的具体原因；为 null 表示未知。</summary>
+        public static string LastAuthFailureReason { get; private set; }
+
         public static void SetAuthFailure(string code) => LastAuthFailureCode = code;
+
+        public static void SetAuthFailureReason(string reason) => LastAuthFailureReason = reason;
 
         private const string DEFAULT_DOWNLOAD_DIR = "depots";
         private const string CONFIG_DIR = ".StarDepotDownloader";

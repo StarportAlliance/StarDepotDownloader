@@ -368,7 +368,8 @@ namespace StarDepotDownloader
         {
             string code = ContentDownloader.LastAuthFailureCode ?? SddErrorCodes.AuthFailed;
             int exitCode = code == SddErrorCodes.AuthRequired ? 2 : 3;
-            return new SddException(code, message, exitCode);
+            string reason = ContentDownloader.LastAuthFailureReason;
+            return new SddException(code, string.IsNullOrEmpty(reason) ? message : $"{message} {reason}", exitCode);
         }
 
         static async Task<int> HandleAuthStatus(string username, bool online)
